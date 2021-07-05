@@ -10,7 +10,6 @@ import (
 	"sort"
 	"sync"
 	"sync/atomic"
-	"syscall"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -550,17 +549,10 @@ func run(c context.Context) error {
 		}()
 
 		// Listen on unix domain socket
-		grpcListener, err = net.Listen("unix", client.ConnectorSocketName)
+		grpcListener, err = client.ListenSocket(c, processName, client.ConnectorSocketName)
 		if err != nil {
-			if errors.Is(err, syscall.EADDRINUSE) {
-				return fmt.Errorf("socket %q exists so the %s is either already running or terminated ungracefully",
-					client.SocketURL(client.ConnectorSocketName), processName)
-			}
 			return err
 		}
-		// Don't have dhttp.ServerConfig.Serve unlink the socket; defer unlinking the socket
-		// until the process exits.
-		grpcListener.(*net.UnixListener).SetUnlinkOnClose(false)
 
 		dlog.Info(c, "gRPC server started")
 		defer func() {
