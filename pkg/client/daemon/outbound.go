@@ -100,7 +100,7 @@ func newOutbound(c context.Context, dnsIPStr string, noSearch bool) (*outbound, 
 		kubeDNS:       make(chan net.IP, 1),
 	}
 
-	if ret.router, err = newTunRouter(); err != nil {
+	if ret.router, err = newTunRouter(c); err != nil {
 		return nil, err
 	}
 	return ret, nil
