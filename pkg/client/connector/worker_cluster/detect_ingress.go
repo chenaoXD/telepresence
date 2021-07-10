@@ -1,4 +1,4 @@
-package connector
+package worker_cluster
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 )
 
 // TOOO: Move this to traffic-manager
-func (kc *k8sCluster) detectIngressBehavior(c context.Context) ([]*manager.IngressInfo, error) {
+func (kc *K8sCluster) DetectIngressBehavior(c context.Context) ([]*manager.IngressInfo, error) {
 	loadBalancers, err := kc.findAllSvcByType(c, v1.ServiceTypeLoadBalancer)
 	if err != nil {
 		return nil, fmt.Errorf("failed to obtain all services of type LoadBalancer: %v", err)
