@@ -7,6 +7,7 @@ import (
 	"github.com/telepresenceio/telepresence/rpc/v2/manager"
 	"github.com/telepresenceio/telepresence/v2/pkg/client/connector/auth"
 	"github.com/telepresenceio/telepresence/v2/pkg/client/connector/internal/broadcastqueue"
+	"github.com/telepresenceio/telepresence/v2/pkg/client/connector/worker_cluster"
 )
 
 // A TrafficManager implementation is essentially the goroutine that handles communication with the
@@ -37,6 +38,9 @@ type State struct {
 	LoginExecutor     auth.LoginExecutor
 	UserNotifications broadcastqueue.BroadcastQueue
 
+	clusterFinalized chan struct{}
+	cluster          *worker_cluster.K8sCluster
+
 	trafficMgrFinalized chan struct{}
 	trafficMgr          TrafficManager
 }
@@ -45,7 +49,37 @@ func NewState() *State {
 	return &State{
 		//LoginExecutor:     "Caller will initialize this later",
 		//UserNotifications: "The zero value is fine",
+		clusterFinalized:    make(chan struct{}),
 		trafficMgrFinalized: make(chan struct{}),
+	}
+}
+
+func (s *State) MaybeSetCluster(cluster *worker_cluster.K8sCluster) bool {
+	select {
+	case <-s.clusterFinalized:
+		return false
+	default:
+		s.cluster = cluster
+		close(s.clusterFinalized)
+		return true
+	}
+}
+
+func (s *State) GetClusterBlocking(ctx context.Context) (*worker_cluster.K8sCluster, error) {
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-s.clusterFinalized:
+		return s.cluster, nil
+	}
+}
+
+func (s *State) GetClusterNonBlocking() *worker_cluster.K8sCluster {
+	select {
+	case <-s.clusterFinalized:
+		return s.cluster
+	default:
+		return nil
 	}
 }
 
