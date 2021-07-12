@@ -5,7 +5,6 @@
 - Feature: Telepresence no longer depends on having an external
   `kubectl` binary, which might not be present for OpenShift users
   (who have `oc` instead of `kubectl`).
-
 - Bugfix: Fixed and improved several error messages, to hopefully be
   more helpful.
 
@@ -15,6 +14,9 @@
   Traffic Managers in multiple namespaces. This will allow operators to
   install Traffic Managers with limited permissions that match the
   permissions restrictions that Telepresence users are subject to.
+
+### 2.3.4 (July 9, 2021)
+
 - Bugfix: Some log statements that contained garbage instead of a proper IP address now produce the correct address.
 - Bugfix: Telepresence will no longer panic when multiple services match a workload.
 - Bugfix: The traffic-manager will now accurately determine the service subnet by creating a dummy-service in its own namespace.
