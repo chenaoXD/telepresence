@@ -28,6 +28,7 @@ import (
 	"github.com/telepresenceio/telepresence/v2/pkg/client/connector/sharedstate"
 	"github.com/telepresenceio/telepresence/v2/pkg/client/connector/worker_cluster"
 	"github.com/telepresenceio/telepresence/v2/pkg/client/connector/worker_grpc"
+	"github.com/telepresenceio/telepresence/v2/pkg/client/connector/worker_trafficmanager"
 	"github.com/telepresenceio/telepresence/v2/pkg/client/logging"
 	"github.com/telepresenceio/telepresence/v2/pkg/filelocation"
 )
@@ -121,7 +122,7 @@ func (s *service) connect(c context.Context, cr *rpc.ConnectRequest, dryRun bool
 			ClusterId:      s.sharedState.GetClusterNonBlocking().GetClusterId(c),
 			IngressInfos:   ingressInfo,
 		}
-		s.sharedState.GetTrafficManagerNonBlocking().(*trafficManager).setStatus(c, ret)
+		s.sharedState.GetTrafficManagerNonBlocking().SetStatus(c, ret)
 		return ret
 	case s.sharedState.GetClusterNonBlocking() != nil /* && !s.sharedState.GetClusterNonBlocking().k8sConfig.equals(k8sConfig) */ :
 		ret := &rpc.ConnectInfo{
@@ -130,7 +131,7 @@ func (s *service) connect(c context.Context, cr *rpc.ConnectRequest, dryRun bool
 			ClusterServer:  s.sharedState.GetClusterNonBlocking().K8sConfig.Server,
 			ClusterId:      s.sharedState.GetClusterNonBlocking().GetClusterId(c),
 		}
-		s.sharedState.GetTrafficManagerNonBlocking().(*trafficManager).setStatus(c, ret)
+		s.sharedState.GetTrafficManagerNonBlocking().SetStatus(c, ret)
 		return ret
 	default:
 		// This is the first call to Connect; we have to tell the background connect
@@ -218,11 +219,11 @@ func (s *service) connectWorker(c context.Context, cr *rpc.ConnectRequest, k8sCo
 	connectStart := time.Now()
 
 	dlog.Info(c, "Connecting to traffic manager...")
-	tmgr, err := newTrafficManager(c,
+	tmgr, err := worker_trafficmanager.NewTrafficManager(c,
 		s.env,
 		s.sharedState.GetClusterNonBlocking(),
 		s.scoutClient.Reporter.InstallID(),
-		trafficManagerCallbacks{
+		worker_trafficmanager.Callbacks{
 			GetAPIKey:       s.sharedState.GetCloudAPIKey,
 			SetClient:       s.managerProxy.SetClient,
 			SetOutboundInfo: daemonClient.SetOutboundInfo,
@@ -242,7 +243,7 @@ func (s *service) connectWorker(c context.Context, cr *rpc.ConnectRequest, k8sCo
 	dlog.Info(c, "Waiting for TrafficManager to connect")
 	tc, cancel := client.GetConfig(c).Timeouts.TimeoutContext(c, client.TimeoutTrafficManagerConnect)
 	defer cancel()
-	if err := tmgr.waitUntilStarted(tc); err != nil {
+	if _, err := tmgr.GetClientBlocking(tc); err != nil {
 		dlog.Errorf(c, "Failed to initialize session with traffic-manager: %v", err)
 		// No point in continuing without a traffic manager
 		s.cancel()
@@ -285,7 +286,7 @@ func (s *service) connectWorker(c context.Context, cr *rpc.ConnectRequest, k8sCo
 		ClusterId:      s.sharedState.GetClusterNonBlocking().GetClusterId(c),
 		IngressInfos:   ingressInfo,
 	}
-	tmgr.setStatus(c, ret)
+	tmgr.SetStatus(c, ret)
 	return ret
 }
 
