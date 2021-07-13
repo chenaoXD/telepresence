@@ -78,7 +78,7 @@ func Ensure(ctx context.Context, r Instance) error {
 		return err
 	}
 	if exists {
-		return r.Update(ctx)
+		return nil
 	}
 	return r.Create(ctx)
 }
